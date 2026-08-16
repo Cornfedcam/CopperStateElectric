@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service Area — Copper State Electric</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --bg: #14181d;
+    --bg-panel: #1b2128;
+    --bg-card: #232a32;
+    --border: rgba(238,234,226,0.09);
+    --border-strong: rgba(238,234,226,0.16);
+    --text: #eeeae2;
+    --text-muted: #93a0ab;
+    --copper: #c17a3d;
+    --copper-bright: #e6a05c;
+    --red: #d6402c;
+    --green: #3fa373;
+    --radius: 3px;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:'Oswald', sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.02em;
+    margin:0;
+  }
+  .mono{ font-family:'JetBrains Mono', monospace; letter-spacing:0.03em; }
+  a{color:inherit;}
+  .wrap{ max-width:1120px; margin:0 auto; padding:0 24px; }
+  section{padding:64px 0;}
+  @media(max-width:640px){ section{padding:44px 0;} }
+  ::selection{background:var(--copper); color:#14181d;}
+  a:focus-visible, button:focus-visible{ outline:2px solid var(--copper-bright); outline-offset:3px; }
+
+  /* ---------- Header (shared with main site) ---------- */
+  .site-header{
+    position:sticky; top:0; z-index:50;
+    background:rgba(20,24,29,0.92);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .site-header .wrap{ display:flex; align-items:center; justify-content:space-between; height:72px; }
+  .brand{
+    display:flex; align-items:center; gap:10px;
+    font-family:'Oswald', sans-serif;
+    font-size:1.05rem; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.03em;
+    text-decoration:none;
+  }
+  .brand-mark{ width:30px; height:34px; flex-shrink:0; display:flex; align-items:center; }
+  .brand-mark svg{ width:100%; height:100%; display:block; }
+  .az-outline{ fill:none; stroke:var(--copper-bright); stroke-width:4; stroke-linejoin:round; stroke-linecap:round; }
+  .az-bolt{ fill:var(--copper-bright); }
+  .az-capital{ fill:var(--green); stroke:var(--bg-panel); stroke-width:1.5; }
+  nav.primary-nav{ display:flex; align-items:center; gap:28px; }
+  nav.primary-nav a{
+    font-size:0.86rem; text-decoration:none; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:0.05em; transition:color .15s;
+  }
+  nav.primary-nav a:hover{ color:var(--text); }
+  nav.primary-nav a[aria-current="page"]{ color:var(--copper-bright); }
+  @media(max-width:800px){ nav.primary-nav .nav-links{display:none;} }
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:12px 22px; border-radius:var(--radius);
+    font-family:'Oswald', sans-serif; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.04em; font-size:0.84rem;
+    text-decoration:none; border:1px solid transparent; cursor:pointer;
+    transition:box-shadow .12s ease, background .15s, border-color .15s, color .15s;
+  }
+  .btn-primary{ background:var(--red); color:#fff5f2; }
+  .btn-primary:hover{ box-shadow:0 0 0 3px rgba(214,64,44,0.25); }
+  .btn-ghost{ background:transparent; border:1px solid var(--border-strong); color:var(--text); }
+  .btn-ghost:hover{ border-color:var(--copper-bright); color:var(--copper-bright); }
+
+  /* ---------- Page hero ---------- */
+  .page-hero{
+    padding:56px 0 8px;
+    background:
+      radial-gradient(600px 300px at 85% -10%, rgba(193,122,61,0.14), transparent 60%),
+      var(--bg);
+    border-bottom:1px solid var(--border);
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:0.78rem;
+    color:var(--copper-bright); letter-spacing:0.08em; text-transform:uppercase;
+    margin-bottom:14px; display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow .dot{ width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 3px rgba(63,163,115,0.2); }
+  .page-hero h1{ font-size:clamp(2rem, 4.5vw, 3rem); line-height:1.06; margin-bottom:16px; }
+  .page-hero p.lede{ color:var(--text-muted); font-size:1.05rem; max-width:56ch; margin-bottom:28px; }
+
+  /* ---------- Map section ---------- */
+  .service-map{
+    height:520px;
+    border-radius:6px;
+    border:1px solid var(--border-strong);
+    margin-bottom:24px;
+    overflow:hidden;
+    background:var(--bg-panel);
+  }
+  @media(max-width:640px){ .service-map{ height:400px; } }
+  .map-note{
+    font-family:'JetBrains Mono', monospace; font-size:0.76rem;
+    color:var(--text-muted); margin:0 0 32px;
+  }
+  .leaflet-popup-content-wrapper{
+    background:var(--bg-card); color:var(--text);
+    border:1px solid var(--border-strong); border-radius:4px; box-shadow:none;
+  }
+  .leaflet-popup-content{ font-family:'IBM Plex Sans', sans-serif; font-size:0.85rem; margin:10px 12px; }
+  .leaflet-popup-content strong{
+    font-family:'Oswald', sans-serif; text-transform:uppercase;
+    letter-spacing:0.02em; color:var(--copper-bright);
+  }
+  .leaflet-popup-tip{ background:var(--bg-card); box-shadow:none; }
+  .leaflet-container a.leaflet-popup-close-button{ color:var(--text-muted); }
+  .leaflet-control-zoom a{
+    background:var(--bg-card) !important; color:var(--text) !important;
+    border-color:var(--border-strong) !important;
+  }
+  .leaflet-control-attribution{ background:rgba(20,24,29,0.75) !important; color:var(--text-muted) !important; }
+  .leaflet-control-attribution a{ color:var(--copper-bright) !important; }
+
+  /* ---------- City list ---------- */
+  .section-head{ margin-bottom:36px; max-width:60ch; }
+  .section-head h2{ font-size:clamp(1.5rem, 2.6vw, 2rem); margin-bottom:12px; }
+  .section-head p{ color:var(--text-muted); }
+  .city-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:1px;
+    background:var(--border);
+    border:1px solid var(--border);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  @media(max-width:800px){ .city-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:480px){ .city-grid{ grid-template-columns:1fr; } }
+  .city-item{
+    background:var(--bg);
+    padding:18px 20px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .city-item .city-name{ font-family:'Oswald', sans-serif; font-size:0.95rem; text-transform:uppercase; letter-spacing:0.02em; }
+  .city-item .city-tag{ font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--copper-bright); }
+
+  /* ---------- CTA band ---------- */
+  .cta-band{
+    background:var(--bg-panel);
+    border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+    text-align:center;
+  }
+  .cta-band h2{ font-size:clamp(1.5rem, 2.8vw, 2.1rem); margin-bottom:14px; }
+  .cta-band p{ color:var(--text-muted); margin-bottom:26px; }
+  .cta-actions{ display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+
+  /* ---------- Footer (shared) ---------- */
+  footer{ padding:36px 0; border-top:1px solid var(--border); }
+  footer .wrap{
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:16px;
+    font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:var(--text-muted);
+  }
+  footer .foot-brand{ color:var(--text); text-transform:uppercase; letter-spacing:0.04em; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 100 110" xmlns="http://www.w3.org/2000/svg">
+          <path class="az-outline" d="M20,5 L85,5 L85,95 L55,95 L50,90 L20,90 L22,75 L15,68 L18,58 L10,50 L15,40 L8,30 L14,20 L10,10 L20,5 Z"/>
+          <path class="az-bolt" d="M54,26 L38,54 L48,54 L34,84 L66,50 L52,50 Z"/>
+          <circle class="az-capital" cx="45" cy="70" r="4"/>
+        </svg>
+      </span>
+      Copper State Electric
+    </a>
+    <nav class="primary-nav">
+      <div class="nav-links">
+        <a href="index.html#services">Services</a>
+        <a href="index.html#valley">Why Us</a>
+        <a href="service-area.html" aria-current="page">Service Area</a>
+        <a href="index.html#contact">Contact</a>
+      </div>
+      <a class="btn btn-primary" href="tel:16025550142">(602) 555-0142</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="dot"></span>Coverage</div>
+    <h1>Valley-wide, same crew</h1>
+    <p class="lede">Based in Phoenix, running trucks across the metro every day. The shaded areas below mark where we take regular service calls — click one for details.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div id="serviceMap" class="service-map" role="img" aria-label="Map of the Phoenix metro area with Copper State Electric's service cities highlighted in copper"></div>
+    <p class="map-note">Circles show general coverage, not exact city limits — call to confirm your address.</p>
+
+    <div class="section-head">
+      <h2>Cities we service</h2>
+      <p>Twelve cities across the Valley, one crew you already know.</p>
+    </div>
+    <div class="city-grid">
+      <div class="city-item"><span class="city-name">Phoenix</span><span class="city-tag">Home base</span></div>
+      <div class="city-item"><span class="city-name">Tempe</span></div>
+      <div class="city-item"><span class="city-name">Scottsdale</span></div>
+      <div class="city-item"><span class="city-name">Mesa</span></div>
+      <div class="city-item"><span class="city-name">Chandler</span></div>
+      <div class="city-item"><span class="city-name">Gilbert</span></div>
+      <div class="city-item"><span class="city-name">Glendale</span></div>
+      <div class="city-item"><span class="city-name">Peoria</span></div>
+      <div class="city-item"><span class="city-name">Avondale</span></div>
+      <div class="city-item"><span class="city-name">Goodyear</span></div>
+      <div class="city-item"><span class="city-name">Queen Creek</span></div>
+      <div class="city-item"><span class="city-name">Buckeye</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-band">
+  <div class="wrap">
+    <h2>Not seeing your neighborhood?</h2>
+    <p>Call anyway — we cover plenty of ground between these dots and often work just outside them.</p>
+    <div class="cta-actions">
+      <a class="btn btn-primary" href="tel:16025550142">Call (602) 555-0142</a>
+      <a class="btn btn-ghost" href="index.html#contact">Request Service</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="foot-brand">Copper State Electric</span>
+    <span>ROC #123456 — Licensed, Bonded &amp; Insured</span>
+    <span>Mon–Sat 7am–7pm · 24/7 emergency, Jun–Sep</span>
+    <span>(602) 555-0142</span>
+  </div>
+</footer>
+
+<script>
+  const serviceCities = [
+    { name:"Phoenix",      lat:33.4484, lng:-112.0740, radius:11000, note:"Home base" },
+    { name:"Tempe",        lat:33.4255, lng:-111.9400, radius:7000 },
+    { name:"Scottsdale",   lat:33.4942, lng:-111.9261, radius:9000 },
+    { name:"Mesa",         lat:33.4152, lng:-111.8315, radius:9500 },
+    { name:"Chandler",     lat:33.3062, lng:-111.8413, radius:8000 },
+    { name:"Gilbert",      lat:33.3528, lng:-111.7890, radius:8000 },
+    { name:"Glendale",     lat:33.5387, lng:-112.1860, radius:8000 },
+    { name:"Peoria",       lat:33.5806, lng:-112.2374, radius:8500 },
+    { name:"Avondale",     lat:33.4356, lng:-112.3496, radius:6500 },
+    { name:"Goodyear",     lat:33.4353, lng:-112.3576, radius:7000 },
+    { name:"Queen Creek",  lat:33.2487, lng:-111.6343, radius:7000 },
+    { name:"Buckeye",      lat:33.3703, lng:-112.5838, radius:8000 }
+  ];
+
+  const mapEl = document.getElementById('serviceMap');
+  if (mapEl && window.L) {
+    const map = L.map('serviceMap', { scrollWheelZoom:false, attributionControl:true })
+      .setView([33.55, -112.05], 9);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains:'abcd',
+      maxZoom:19,
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    }).addTo(map);
+
+    const circles = serviceCities.map(city => {
+      const circle = L.circle([city.lat, city.lng], {
+        radius: city.radius,
+        color:'#e6a05c',
+        weight:1.5,
+        fillColor:'#e6a05c',
+        fillOpacity:0.22
+      }).addTo(map);
+      circle.bindPopup(`<strong>${city.name}</strong><br>${city.note ? city.note + ' — ' : ''}Serviced by Copper State Electric`);
+      return circle;
+    });
+
+    const group = L.featureGroup(circles);
+    map.fitBounds(group.getBounds(), { padding:[16,16] });
+
+    map.once('click', () => map.scrollWheelZoom.enable());
+  }
+</script>
+
+</body>
+</html>
